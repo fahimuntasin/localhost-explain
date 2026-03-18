@@ -457,101 +457,97 @@
     <p>Free plan এ প্রতিবার ngrok restart করলে URL বদলে যায়। Webhook এর জন্য এটা সমস্যা। Paid plan এ fixed URL পাওয়া যায়।</p>
   </div>
 
-  <h3>③ VPS Deploy — Real Engineer Way</h3>
+  <h3>③ Cloudflare Tunnel — Free, No Port Forwarding</h3>
 
   <p>
-    এটা হলো সবচেয়ে proper solution। n8n কে আপনার computer থেকে বের করে একটা <strong>cloud server</strong> এ deploy করা।
+    এটা হলো আজকের সবচেয়ে popular solution। আপনার router এ কোনো port open করতে হবে না, static IP লাগবে না, কোনো server ভাড়া করতে হবে না। শুধু একটা free Cloudflare account আর একটা domain হলেই চলে।
+  </p>
+
+  <p>
+    কীভাবে কাজ করে? আপনার computer থেকে Cloudflare এর server এ একটা <strong>outbound connection</strong> তৈরি হয়। বাইরের কেউ request করলে সেটা Cloudflare ধরে আপনার machine এ পাঠায় — আপনার side থেকে কোনো inbound port open করতে হয় না।
   </p>
 
   <div class="flow">
-    <div class="flow-title">// production deployment</div>
+    <div class="flow-title">// cloudflare tunnel flow</div>
     <div class="frow">
-      <span class="fnode fn-b"><span class="fnd" style="background:#60a5fa"></span>Internet — যেকোনো জায়গা</span>
+      <span class="fnode fn-b"><span class="fnd" style="background:#60a5fa"></span>Internet — যেকোনো device</span>
     </div>
     <span class="farrow">↓</span>
     <div class="frow">
-      <span class="fnode fn-p"><span class="fnd" style="background:#a070f0"></span>VPS Server (Render / Railway)</span>
+      <span class="fnode fn-b"><span class="fnd" style="background:#f6821f"></span>Cloudflare Edge Server</span>
+      <span class="fnote">// yourapp.yourdomain.com</span>
+    </div>
+    <span class="farrow">↓</span>
+    <div class="frow">
+      <span class="fnode fn-b"><span class="fnd" style="background:#a06820"></span>Cloudflare Tunnel (cloudflared)</span>
+      <span class="fnote">// encrypted outbound connection</span>
+    </div>
+    <span class="farrow">↓</span>
+    <div class="frow">
+      <span class="fnode fn-g"><span class="fnd" style="background:#7dd3b0"></span>আপনার localhost:5678</span>
+      <span class="fresult fr-ok">✓ Secure</span>
+    </div>
+  </div>
+
+  <pre><span class="c"># cloudflared install করুন, তারপর:</span>
+<span class="n">cloudflared tunnel --url localhost:5678</span>
+
+<span class="c"># অথবা permanent setup এর জন্য:</span>
+<span class="n">cloudflared tunnel create my-app</span>
+<span class="n">cloudflared tunnel route dns my-app app.yourdomain.com</span>
+<span class="n">cloudflared tunnel run my-app</span></pre>
+
+  <div class="box green">
+    <div class="box-label">কেন Cloudflare Tunnel best?</div>
+    <p>Free। HTTPS automatic। DDoS protection built-in। Port forwarding লাগে না। ISP block করতে পারে না। Domain connect করলে permanent URL পাওয়া যায়।</p>
+  </div>
+
+  <h3>④ VPS + Nginx — Full Control</h3>
+
+  <p>
+    আপনি যদি চান সব কিছু নিজের হাতে থাকুক — নিজের server, নিজের config — তাহলে একটা VPS নিয়ে সেখানে deploy করাই সবচেয়ে professional approach।
+  </p>
+
+  <p>
+    <strong>DigitalOcean, Hetzner, Vultr, Contabo</strong> — এগুলো popular। মাসে $4–6 এ একটা basic VPS পাওয়া যায়। সেখানে app deploy করে nginx দিয়ে reverse proxy করলে নিজের domain এ HTTPS সহ serve করা যায়।
+  </p>
+
+  <div class="flow">
+    <div class="flow-title">// vps + nginx + ssl</div>
+    <div class="frow">
+      <span class="fnode fn-b"><span class="fnd" style="background:#60a5fa"></span>Internet</span>
+    </div>
+    <span class="farrow">↓</span>
+    <div class="frow">
+      <span class="fnode fn-p"><span class="fnd" style="background:#a070f0"></span>VPS — public IP: 45.76.x.x</span>
+      <span class="fnote">// always on, 24/7</span>
     </div>
     <span class="farrow">↓</span>
     <div class="frow">
       <span class="fnode fn-p"><span class="fnd" style="background:#7050b0"></span>nginx reverse proxy :443</span>
-      <span class="fnote">// SSL handle করে</span>
+      <span class="fnote">// Let's Encrypt SSL</span>
     </div>
     <span class="farrow">↓</span>
     <div class="frow">
-      <span class="fnode fn-g"><span class="fnd" style="background:#7dd3b0"></span>n8n :5678</span>
+      <span class="fnode fn-g"><span class="fnd" style="background:#7dd3b0"></span>আপনার app :5678</span>
       <span class="fresult fr-ok">Always On ✓</span>
     </div>
   </div>
 
-  <p>
-    এই setup এ আপনার n8n সবসময় চালু থাকে, আপনার computer বন্ধ থাকলেও। <code class="hl-purple">n8n.yourdomain.com</code> দিয়ে যেকোনো জায়গা থেকে access করা যাবে।
-  </p>
-
-  <div class="box green">
-    <div class="box-label">Best option কোনটা?</div>
-    <p>শুধু test এর জন্য → <strong>ngrok</strong>। Production এ real automation চালাতে চাইলে → <strong>VPS deploy</strong>। Render এ free tier আছে যেটা দিয়ে শুরু করা যায়।</p>
+  <div class="box blue">
+    <div class="box-label">কখন VPS নেবেন?</div>
+    <p>যখন app টা সবসময় চালু থাকা দরকার — আপনার PC বন্ধ থাকলেও। Database, backend API, multiple service একসাথে run করতে চাইলে VPS ছাড়া উপায় নেই।</p>
   </div>
 
-  <div class="divider"><span>summary</span></div>
-
-  <h2>Quick Comparison</h2>
-
-  <div class="tbl-wrap">
-    <table>
-      <thead>
-        <tr>
-          <th>Option</th>
-          <th>কোথা থেকে কাজ করে</th>
-          <th>Cost</th>
-          <th>Production Ready</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td class="opt">localhost</td>
-          <td>শুধু নিজের device</td>
-          <td>Free</td>
-          <td><span class="chip chip-n">✗ না</span></td>
-        </tr>
-        <tr>
-          <td class="opt">LAN IP</td>
-          <td>Same WiFi</td>
-          <td>Free</td>
-          <td><span class="chip chip-n">✗ না</span></td>
-        </tr>
-        <tr>
-          <td class="opt">ngrok tunnel</td>
-          <td>যেকোনো জায়গা</td>
-          <td>Free*</td>
-          <td><span class="chip chip-w">~ আংশিক</span></td>
-        </tr>
-        <tr>
-          <td class="opt">VPS deploy</td>
-          <td>যেকোনো জায়গা</td>
-          <td>~$5/mo</td>
-          <td><span class="chip chip-y">✓ হ্যাঁ</span></td>
-        </tr>
-      </tbody>
-    </table>
-  </div>
-
-  <div class="divider"><span>takeaway</span></div>
+  <h3>⑤ Reverse Proxy কী — একটু গভীরে</h3>
 
   <p>
-    সংক্ষেপে বললে — <code>localhost</code> মানে <strong>"আমার নিজের machine"</strong>। এই address কখনো আপনার computer এর বাইরে যায় না। বাইরের কেউ access পেতে হলে হয় same network এর IP, নয়তো tunnel বা server দরকার।
+    Nginx বা Caddy এর কথা বারবার আসছে — এগুলো কী করে? আপনার app normally একটা specific port এ চলে, যেমন <code>:5678</code>। কিন্তু browser সরাসরি port ছাড়া visit করে, মানে <code>yourdomain.com</code> লিখলে সে আসলে <code>:443</code> (HTTPS) তে যায়।
   </p>
 
+  <p>
+    Reverse proxy মাঝখানে বসে কাজটা করে — <code>:443</code> এ request নেয়, আপনার app এর <code>:5678</code> এ পাঠায়, response আবার client কে দেয়। User বুঝতেও পারে না মাঝে কেউ আছে।
+  </p>
 
-
-  <div class="author">
-    <div class="avatar">//</div>
-    <div class="author-info">
-      <div class="author-name">written with ♥ for students</div>
-      <div class="author-bio">networking · self-hosted tools · n8n</div>
-    </div>
-  </div>
-
-</div>
-</body>
-  </html>
+  <pre><span class="c"># Caddy দিয়ে সবচেয়ে সহজ reverse proxy (Caddyfile):</span>
+<span class="n">app.yourdomain.
